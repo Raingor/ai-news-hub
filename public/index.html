@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Models News Hub</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d29922;
+    --red: #f85149;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+  /* Header */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h1 span { color: var(--accent); }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .refresh-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background .2s;
+  }
+  .refresh-btn:hover { background: var(--border); }
+  .refresh-btn:disabled { opacity: .5; cursor: wait; }
+  .status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+  }
+
+  /* Search + Filters */
+  .controls {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+    position: sticky;
+    top: 57px;
+    z-index: 99;
+  }
+  .controls .container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .search-box {
+    flex: 1;
+    min-width: 200px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--text2); }
+
+  .source-filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .source-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .source-pill:hover { border-color: var(--accent); color: var(--text); }
+  .source-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .count-badge {
+    display: inline-block;
+    background: var(--border);
+    color: var(--text2);
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 4px;
+  }
+  .source-pill.active .count-badge {
+    background: rgba(255,255,255,.2);
+    color: #fff;
+  }
+
+  .lang-filters {
+    display: flex;
+    gap: 4px;
+  }
+  .lang-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .lang-pill:hover { border-color: var(--accent); }
+  .lang-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Article Grid */
+  .articles {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .article {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    transition: border-color .2s;
+  }
+  .article:hover { border-color: var(--text2); }
+  .article-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+  .article-title a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .article-title a:hover { color: var(--accent); }
+  .article-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .article-source {
+    display: inline-block;
+    background: var(--surface2);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .lang-badge {
+    display: inline-block;
+    background: var(--surface2);
+    color: var(--orange);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .article-desc {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Loading / Empty */
+  .loading, .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text2);
+  }
+  .spinner {
+    display: inline-block;
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin-bottom: 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Source Status */
+  .source-status {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .source-status .ok { color: var(--green); }
+  .source-status .err { color: var(--red); }
+
+  /* Error toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--red);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    z-index: 200;
+    display: none;
+    max-width: 400px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    header .container { flex-direction: column; align-items: flex-start; }
+    .controls .container { flex-direction: column; }
+    .search-box { min-width: 100%; }
+    .article-title { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1><span>&#x1f916;</span> AI Models News Hub</h1>
+    <div class="header-right">
+      <span id="statusText"><span class="status-dot"></span>Loading...</span>
+      <span id="countText">0 articles</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadNews()">&#x21bb; Refresh</button>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="container">
+    <input class="search-box" id="searchInput" placeholder="Search articles..." oninput="applyFilters()">
+    <div class="source-filters" id="sourceFilters"></div>
+    <div class="lang-filters" id="langFilters">
+      <button class="lang-pill active" data-lang="" onclick="setLang('')">All</button>
+      <button class="lang-pill" data-lang="en" onclick="setLang('en')">EN</button>
+      <button class="lang-pill" data-lang="zh" onclick="setLang('zh')">中文</button>
+    </div>
+    <div class="source-status" id="sourceStatus"></div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="articles" id="articles">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Fetching AI model news from global sources...</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let allArticles = [];
+let activeSource = null;
+let activeLang = '';
+let sortOrder = 'newest';
+let refreshInterval;
+
+async function loadNews() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = '\u21bb Fetching...';
+
+  try {
+    const res = await fetch('/api/news');
+    const data = await res.json();
+    allArticles = data.articles;
+    renderSources(data);
+    renderArticles();
+    updateStatus(data);
+  } catch (err) {
+    showToast('Failed to fetch news: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '\u21bb Refresh';
+  }
+}
+
+function renderSources(data) {
+  // Collect unique sources with counts
+  const sourceMap = {};
+  for (const a of allArticles) {
+    sourceMap[a.source] = (sourceMap[a.source] || 0) + 1;
+  }
+  const sources = Object.entries(sourceMap).sort((a, b) => b[1] - a[1]);
+
+  const container = document.getElementById('sourceFilters');
+  container.innerHTML = '<button class="source-pill' + (activeSource === null ? ' active' : '') + '" data-source="" onclick="setSource(\'\')">All<span class="count-badge">' + allArticles.length + '</span></button>';
+
+  for (const [name, count] of sources) {
+    const pill = document.createElement('button');
+    pill.className = 'source-pill' + (activeSource === name ? ' active' : '');
+    pill.dataset.source = name;
+    pill.textContent = name;
+    const badge = document.createElement('span');
+    badge.className = 'count-badge';
+    badge.textContent = count;
+    pill.appendChild(badge);
+    pill.onclick = () => setSource(name);
+    container.appendChild(pill);
+  }
+
+  // Source status
+  const statusEl = document.getElementById('sourceStatus');
+  if (data.errors && data.errors.length > 0) {
+    statusEl.innerHTML = '<span class="ok">\u2713 ' + data.successfulSources + '/' + data.totalSources + '</span> <span class="err">\u2717 ' + data.errors.map(e => e.source).join(', ') + '</span>';
+  } else {
+    statusEl.innerHTML = '<span class="ok">\u2713 ' + data.successfulSources + '/' + data.totalSources + ' sources</span>';
+  }
+}
+
+function setSource(name) {
+  activeSource = name || null;
+  document.querySelectorAll('.source-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.source === (name || ''));
+  });
+  renderArticles();
+}
+
+function setLang(lang) {
+  activeLang = lang;
+  document.querySelectorAll('.lang-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.lang === lang);
+  });
+  renderArticles();
+}
+
+function applyFilters() {
+  renderArticles();
+}
+
+function renderArticles() {
+  const container = document.getElementById('articles');
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+
+  let filtered = allArticles;
+  if (activeLang) {
+    filtered = filtered.filter(a => a.lang === activeLang);
+  }
+  if (activeSource) {
+    filtered = filtered.filter(a => a.source === activeSource);
+  }
+  if (search) {
+    filtered = filtered.filter(a =>
+      (a.title && a.title.toLowerCase().includes(search)) ||
+      (a.description && a.description.toLowerCase().includes(search))
+    );
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty"><p>\uD83D\uDD0D No articles found</p></div>';
+    document.getElementById('countText').textContent = '0 articles';
+    return;
+  }
+
+  document.getElementById('countText').textContent = filtered.length + ' articles';
+
+  container.innerHTML = filtered.map(a => {
+    const date = a.pubDate ? formatDate(a.pubDate) : '';
+    const desc = truncate(a.description, 300);
+    return '<div class="article">' +
+      '<div class="article-title"><a href="' + escapeHtml(a.link) + '" target="_blank" rel="noopener">' + escapeHtml(a.title || '(no title)') + '</a></div>' +
+      '<div class="article-meta">' +
+        '<span class="article-source">' + escapeHtml(a.source) + '</span>' +
+        (a.lang ? '<span class="lang-badge">' + (a.lang === 'zh' ? '中文' : 'EN') + '</span>' : '') +
+        (date ? '<span>' + date + '</span>' : '') +
+      '</div>' +
+      (desc ? '<div class="article-desc">' + escapeHtml(desc) + '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function updateStatus(data) {
+  const elapsed = Math.floor((Date.now() - data.lastFetched) / 1000);
+  const statusText = document.getElementById('statusText');
+  statusText.innerHTML = '<span class="status-dot"></span>Live' + (elapsed < 120 ? ' (' + elapsed + 's ago)' : '');
+}
+
+function formatDate(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch { return dateStr; }
+}
+
+function truncate(str, max) {
+  if (!str || str.length <= max) return str || '';
+  return str.slice(0, max).replace(/\s+\S*$/, '') + '...';
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+// Auto-refresh every 60s
+function startAutoRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(loadNews, 60000);
+}
+
+// Load on startup
+loadNews();
+startAutoRefresh();
+</script>
+</body>
+</html>
