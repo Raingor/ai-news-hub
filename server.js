@@ -20,8 +20,6 @@ const SOURCES = [
   { name: 'VentureBeat AI', url: 'https://venturebeat.com/category/ai/feed/', lang: 'en' },
   // Chinese sources
   { name: 'zh: 雷峰网 AI', url: 'https://www.leiphone.com/feed', lang: 'zh' },
-  { name: 'zh: IT之家', url: 'https://www.ithome.com/rss', lang: 'zh' },
-  { name: 'zh: 36氪', url: 'https://36kr.com/feed', lang: 'zh' },
   { name: 'zh: 钛媒体', url: 'https://www.tmtpost.com/rss', lang: 'zh' },
   { name: 'zh: 动点科技', url: 'https://cn.technode.com/feed/', lang: 'zh' },
   { name: 'zh: 中文大模型动态', url: 'https://news.google.com/rss/search?q=(DeepSeek+OR+%E9%80%9A%E4%B9%89%E5%8D%83%E9%97%AE+OR+%E6%96%87%E5%BF%83%E4%B8%80%E8%A8%80+OR+%E6%99%BA%E8%B0%B1+OR+%E6%9C%88%E4%B9%8B%E6%9A%97%E9%9D%A2+OR+Kimi+OR+Qwen+OR+ChatGLM+OR+Baichuan+OR+%E9%98%B6%E8%B7%83%E6%98%9F%E8%BE%B0+OR+MiniMax+OR+%E9%9B%B6%E4%B8%80%E4%B8%87%E7%89%A9+OR+%E7%99%BE%E5%B7%9D+OR+%E6%98%9F%E7%81%AB+%E5%A4%A7%E6%A8%A1%E5%9E%8B)+when:2d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans', lang: 'zh' },
