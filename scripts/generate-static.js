@@ -129,6 +129,17 @@ function extractArticles(sourceName, lang, parsed) {
   return articles;
 }
 
+// Truncate description to keep JSON size manageable for GitHub Pages
+const MAX_DESC_LEN = 200;
+function truncateDesc(articles) {
+  for (const a of articles) {
+    if (a.description && a.description.length > MAX_DESC_LEN) {
+      a.description = a.description.slice(0, MAX_DESC_LEN).replace(/\s+\S*$/, '') + '…';
+    }
+  }
+  return articles;
+}
+
 function stripHtml(html) {
   if (!html) return '';
   if (typeof html === 'object') {
@@ -162,6 +173,7 @@ async function generate() {
     if (r.status === 'fulfilled') {
       const articles = extractArticles(SOURCES[i].name, r.value.lang, r.value.parsed);
       allArticles.push(...articles);
+      truncateDesc(articles);
       console.log(`  ✓ ${SOURCES[i].name}: ${articles.length} articles`);
     } else {
       errors.push({ source: SOURCES[i].name, error: r.reason?.message || 'Unknown error' });
@@ -186,7 +198,7 @@ async function generate() {
 
   // Write to data/news.json
   const outPath = join(ROOT, 'data', 'news.json');
-  writeFileSync(outPath, JSON.stringify(payload, null, 2), 'utf-8');
+  writeFileSync(outPath, JSON.stringify(payload), 'utf-8');
   console.log(`\n✓ Generated ${allArticles.length} articles → data/news.json`);
   console.log(`✓ Successful: ${payload.successfulSources}/${payload.totalSources} sources`);
 
