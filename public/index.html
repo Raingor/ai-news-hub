@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Models News Hub</title>
+<title>AI Intelligence Hub</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23FAF6EF'/%3E%3Cpath d='M0 0h32v5H0z' fill='%23C43A24'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='17' font-weight='700' fill='%232C2416' text-anchor='middle'%3EAI%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,10 +49,10 @@
   .container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
 
   /* ============================================
-     HEADER — Magazine Masthead Style
+     HEADER — Magazine Masthead
   ============================================ */
   header {
-    padding: 32px 0 16px;
+    padding: 28px 0 12px;
     border-bottom: 2px solid var(--text);
     background: var(--surface);
   }
@@ -135,25 +135,339 @@
   .refresh-btn.spinning svg { animation: spin-refresh .6s linear infinite; }
   @keyframes spin-refresh { to { transform: rotate(360deg); } }
 
-  /* ============================================
-     DIVIDER (decorative rule below masthead)
-  ============================================ */
   .masthead-divider {
-    margin-top: 16px;
+    margin-top: 12px;
     height: 1px;
     background: linear-gradient(90deg, var(--border) 0%, var(--border) 40%, transparent 100%);
   }
 
   /* ============================================
-     CONTROLS BAR
+     TAB NAVIGATION
   ============================================ */
-  .controls {
-    padding: 20px 0 12px;
-    background: var(--surface);
+  .tab-bar {
+    display: flex;
+    gap: 0;
     border-bottom: 1px solid var(--border);
+    background: var(--surface);
     position: sticky;
     top: 0;
     z-index: 50;
+    padding: 0 24px;
+  }
+  .tab-bar-inner {
+    max-width: var(--max-w);
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    gap: 0;
+  }
+  .tab-btn {
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text2);
+    padding: 14px 20px 12px;
+    cursor: pointer;
+    transition: all .25s;
+    position: relative;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+  .tab-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--surface2);
+    color: var(--text2);
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 400;
+    transition: all .2s;
+  }
+  .tab-btn.active .tab-badge {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* ============================================
+     TAB CONTENT
+  ============================================ */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ============================================
+     SECTION COMMON
+  ============================================ */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .icon { font-size: 16px; font-style: normal; }
+  .section-title .sub {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text2);
+    font-size: 13px;
+    font-style: italic;
+  }
+  .section-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .loading-state, .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text2);
+  }
+  .loading-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    animation: pulse-load 1.2s ease-in-out infinite;
+    display: block;
+  }
+  @keyframes pulse-load {
+    0%, 100% { transform: scale(1); opacity: .6; }
+    50% { transform: scale(1.1); opacity: 1; }
+  }
+  .loading-text {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 18px;
+    font-style: italic;
+    color: var(--text2);
+  }
+  .loading-sub {
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 8px;
+  }
+  .empty-state p {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 18px;
+    font-style: italic;
+    color: var(--text2);
+  }
+
+  /* ============================================
+     TAB 1 — MODEL RANKINGS (table style)
+  ============================================ */
+  .model-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .model-table thead th {
+    font-family: 'Outfit', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text2);
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  .model-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .15s;
+  }
+  .model-table tbody tr:hover { background: var(--surface2); }
+  .model-table tbody td {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+  .model-rank {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text2);
+    width: 40px;
+  }
+  .model-rank.top1 { color: var(--gold); font-size: 22px; }
+  .model-rank.top2 { color: #b0a090; font-size: 20px; }
+  .model-rank.top3 { color: #c4a882; font-size: 19px; }
+
+  .model-name {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .model-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+  .model-desc {
+    font-size: 13px;
+    color: var(--text2);
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .model-context {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .model-context .label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 9px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .model-pricing {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+  .model-provider {
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    color: var(--teal);
+    white-space: nowrap;
+  }
+
+  /* ============================================
+     TAB 2 — GITHUB REPOS
+  ============================================ */
+  .github-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .github-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px;
+    transition: border-color .2s, box-shadow .2s;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: article-in .35s ease forwards;
+  }
+  .github-card:hover {
+    border-color: var(--text2);
+    box-shadow: 0 2px 12px rgba(44,36,22,.06);
+  }
+  @keyframes article-in {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .github-card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .github-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--surface2);
+  }
+  .github-repo-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.3;
+    word-break: break-all;
+  }
+  .github-repo-name a { color: var(--text); }
+  .github-repo-name a:hover { color: var(--link); }
+
+  .github-desc {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .github-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .github-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .github-meta-item svg { width: 14px; height: 14px; }
+  .github-lang-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .github-topics {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .github-topic {
+    font-family: 'Outfit', sans-serif;
+    font-size: 10px;
+    background: var(--surface2);
+    color: var(--text2);
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ============================================
+     TAB 3 — AI NEWS (existing style)
+  ============================================ */
+  .controls {
+    padding: 16px 0 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
   }
   .controls-row {
     display: flex;
@@ -177,7 +491,7 @@
   }
   .search-box {
     flex: 1;
-    min-width: 180px;
+    min-width: 160px;
     font-family: 'Source Serif 4', serif;
     font-size: 14px;
     background: var(--bg);
@@ -245,16 +559,9 @@
     transition: all .25s;
     transform: translateX(-50%);
   }
-  .source-pill:hover {
-    color: var(--text);
-    border-color: var(--text2);
-  }
+  .source-pill:hover { color: var(--text); border-color: var(--text2); }
   .source-pill:hover::after { width: 60%; }
-  .source-pill.active {
-    border-color: var(--text);
-    color: var(--text);
-    background: var(--surface2);
-  }
+  .source-pill.active { border-color: var(--text); color: var(--text); background: var(--surface2); }
   .source-pill.active::after { width: 60%; background: var(--text); }
   .count-badge {
     font-family: 'JetBrains Mono', monospace;
@@ -272,16 +579,12 @@
   .source-status .ok { color: var(--green); }
   .source-status .err { color: var(--red); }
 
-  /* ============================================
-     ARTICLES LIST
-  ============================================ */
   .articles {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
-    margin-top: 28px;
+    margin-top: 20px;
   }
-
   .article-item {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -299,10 +602,6 @@
     border-color: var(--text2);
     box-shadow: 0 2px 12px rgba(44,36,22,.06);
   }
-  @keyframes article-in {
-    to { opacity: 1; transform: translateY(0); }
-  }
-
   .article-title {
     font-family: 'Playfair Display', Georgia, serif;
     font-size: 22px;
@@ -311,11 +610,7 @@
     margin-bottom: 6px;
     letter-spacing: -0.3px;
   }
-  .article-title a {
-    color: var(--text);
-    text-decoration: none;
-    transition: color .2s;
-  }
+  .article-title a { color: var(--text); text-decoration: none; transition: color .2s; }
   .article-title a:hover { color: var(--link); }
 
   .article-meta {
@@ -351,7 +646,6 @@
     font-size: 11px;
     color: var(--text2);
   }
-
   .article-desc {
     font-family: 'Source Serif 4', Georgia, serif;
     font-size: 15px;
@@ -361,44 +655,6 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-  }
-
-  /* ============================================
-     LOADING / EMPTY STATES
-  ============================================ */
-  .loading-state, .empty-state {
-    text-align: center;
-    padding: 80px 20px;
-    color: var(--text2);
-  }
-  .loading-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    animation: pulse-load 1.2s ease-in-out infinite;
-    display: block;
-  }
-  @keyframes pulse-load {
-    0%, 100% { transform: scale(1); opacity: .6; }
-    50% { transform: scale(1.1); opacity: 1; }
-  }
-  .loading-text {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 18px;
-    font-style: italic;
-    color: var(--text2);
-  }
-  .loading-sub {
-    font-family: 'Outfit', sans-serif;
-    font-size: 13px;
-    color: var(--text2);
-    margin-top: 8px;
-  }
-
-  .empty-state p {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 18px;
-    font-style: italic;
-    color: var(--text2);
   }
 
   /* ============================================
@@ -421,90 +677,30 @@
   }
 
   /* ============================================
-     SIDEBAR — OpenRouter (removed)
-  ============================================ */
-  .sidebar { display: none; }
-  .sidebar {
-    width: 280px;
-    flex-shrink: 0;
-    position: sticky;
-    top: 120px;
-  }
-  .sidebar-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-  .sidebar-header {
-    font-family: 'Outfit', sans-serif;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .sidebar-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .sidebar-item:last-child { border-bottom: none; }
-  .sidebar-rank {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text2);
-    min-width: 20px;
-    line-height: 1.4;
-  }
-  .sidebar-item-content {
-    flex: 1;
-    min-width: 0;
-  }
-  .sidebar-item-name {
-    font-family: 'Source Serif 4', Georgia, serif;
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.3;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .sidebar-item-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--text2);
-    margin-top: 2px;
-  }
-  .sidebar-loading {
-    font-family: 'Source Serif 4', Georgia, serif;
-    font-size: 13px;
-    font-style: italic;
-    color: var(--text2);
-    padding: 8px 0;
-  }
-
-  /* ============================================
      RESPONSIVE
   ============================================ */
+  @media (max-width: 960px) {
+    .github-grid { grid-template-columns: 1fr; }
+    .model-desc { display: none; }
+  }
+
   @media (max-width: 720px) {
     .container { padding: 0 16px; }
-    header { padding: 20px 0 12px; }
+    header { padding: 20px 0 8px; }
     .masthead { flex-direction: column; align-items: flex-start; }
     h1 { font-size: 28px; }
     .masthead-right { width: 100%; justify-content: flex-start; }
-    .article-title { font-size: 18px; }
+    .tab-btn { font-size: 12px; padding: 12px 12px 10px; }
+    .tab-btn .tab-badge { display: none; }
     .controls-top { flex-direction: column; }
     .search-box { min-width: 100%; }
+    .article-title { font-size: 18px; }
     .article-item { padding: 16px; }
+
+    .model-table thead th:nth-child(4),
+    .model-table tbody td:nth-child(4),
+    .model-table thead th:nth-child(5),
+    .model-table tbody td:nth-child(5) { display: none; }
   }
 
   @media (max-width: 540px) {
@@ -512,23 +708,25 @@
     h1 { font-size: 24px; }
     .article-title { font-size: 16px; }
     .article-desc { -webkit-line-clamp: 3; font-size: 14px; }
+    .tab-bar { overflow-x: auto; }
+    .tab-btn { font-size: 11px; padding: 10px 10px 8px; }
   }
 </style>
 </head>
 <body>
 
-<!-- HEADER — Magazine Masthead -->
+<!-- ============ HEADER ============ -->
 <header>
   <div class="container">
     <div class="masthead">
       <div class="masthead-left">
         <span class="masthead-suptitle">AI Intelligence</span>
-        <h1>Models News Hub</h1>
+        <h1>Intelligence Hub</h1>
       </div>
       <div class="masthead-right">
         <span class="header-status"><span class="status-dot"></span><span id="statusText">Loading</span></span>
-        <span class="header-count" id="countText">0</span>
-        <button class="refresh-btn" id="refreshBtn" onclick="loadNews()">
+        <span class="header-count" id="countText"></span>
+        <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           Refresh
         </button>
@@ -538,13 +736,65 @@
   </div>
 </header>
 
-<!-- CONTROLS -->
-<div class="controls">
-  <div class="container">
+<!-- ============ TAB BAR ============ -->
+<div class="tab-bar">
+  <div class="tab-bar-inner">
+    <button class="tab-btn active" data-tab="models" onclick="switchTab('models')">
+      <span class="icon">&#x1F4CA;</span> Model Rankings
+      <span class="tab-badge" id="badgeModels">0</span>
+    </button>
+    <button class="tab-btn" data-tab="github" onclick="switchTab('github')">
+      <span class="icon">&#x1F680;</span> GitHub AI
+      <span class="tab-badge" id="badgeGithub">0</span>
+    </button>
+    <button class="tab-btn" data-tab="news" onclick="switchTab('news')">
+      <span class="icon">&#x1F4F0;</span> AI News
+      <span class="tab-badge" id="badgeNews">0</span>
+    </button>
+  </div>
+</div>
+
+<!-- ============ TAB 1: MODEL RANKINGS ============ -->
+<div class="container tab-content active" id="tabModels">
+  <div class="section-header">
+    <div class="section-title">
+      <span class="icon">&#x1F4CA;</span>
+      OpenRouter Model Rankings
+      <span class="sub">— sorted by newest</span>
+    </div>
+  </div>
+  <div id="modelsContent">
+    <div class="loading-state">
+      <span class="loading-icon">&#x1F916;</span>
+      <div class="loading-text">Loading model rankings...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TAB 2: GITHUB AI ============ -->
+<div class="container tab-content" id="tabGithub">
+  <div class="section-header">
+    <div class="section-title">
+      <span class="icon">&#x1F680;</span>
+      Trending AI Repositories
+      <span class="sub">— hottest open-source AI projects on GitHub</span>
+    </div>
+  </div>
+  <div id="githubContent">
+    <div class="loading-state">
+      <span class="loading-icon">&#x1F4BB;</span>
+      <div class="loading-text">Loading GitHub trending repos...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TAB 3: AI NEWS ============ -->
+<div class="container tab-content" id="tabNews">
+  <div class="controls">
     <div class="controls-row">
       <div class="controls-top">
         <span class="controls-label">Search</span>
-        <input class="search-box" id="searchInput" placeholder="Search headlines and summaries..." oninput="applyFilters()">
+        <input class="search-box" id="searchInput" placeholder="Search headlines and summaries..." oninput="renderNews()">
         <div class="lang-filters" id="langFilters">
           <button class="lang-pill active" data-lang="" onclick="setLang('')">All</button>
           <button class="lang-pill" data-lang="en" onclick="setLang('en')">EN</button>
@@ -555,17 +805,11 @@
       <div class="source-status" id="sourceStatus"></div>
     </div>
   </div>
-</div>
-
-<!-- ARTICLES -->
-<div class="container">
-  <div class="content-area">
-    <div class="articles" id="articles">
-      <div class="loading-state">
-        <span class="loading-icon">&#x1F4D0;</span>
-        <div class="loading-text">Gathering the latest from global sources</div>
-        <div class="loading-sub">ArXiv &middot; Hugging Face &middot; Reddit &middot; Google News &middot; 中文源</div>
-      </div>
+  <div id="newsContent">
+    <div class="loading-state">
+      <span class="loading-icon">&#x1F4D0;</span>
+      <div class="loading-text">Gathering the latest from global sources</div>
+      <div class="loading-sub">ArXiv &middot; Hugging Face &middot; Reddit &middot; Google News &middot; 中文源</div>
     </div>
   </div>
 </div>
@@ -574,38 +818,48 @@
 <div class="toast" id="toast"></div>
 
 <script>
-let allArticles = [];
+// ============================================
+// STATE
+// ============================================
+let state = {
+  articles: [],
+  models: [],
+  github: [],
+  errors: [],
+  totalSources: 0,
+  successfulSources: 0,
+  totalArticles: 0,
+  totalModels: 0,
+  totalGithub: 0,
+  lastFetched: 0,
+};
+
 let activeSource = null;
 let activeLang = '';
 let refreshInterval;
-let isStaticMode = false; // true = GitHub Pages (static JSON), false = Node server
 
-async function loadNews() {
+// ============================================
+// TAB SWITCHING
+// ============================================
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.toggle('active', el.id === 'tab' + name.charAt(0).toUpperCase() + name.slice(1)));
+}
+
+// ============================================
+// DATA FETCHING
+// ============================================
+async function refreshAll() {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true;
   btn.classList.add('spinning');
 
+  // Check which tab is active for scroll preservation
   try {
-    // Determine data source: in static mode (GitHub Pages) use data/news.json,
-    // in server mode use /api/news
-    const dataUrl = isStaticMode ? 'data/news.json' : '/api/news';
-    const res = await fetch(dataUrl);
-    if (!res.ok) {
-      // Fallback: if server mode fails, try static mode
-      if (!isStaticMode) {
-        console.log('[fallback] Trying static data/news.json...');
-        isStaticMode = true;
-        const res2 = await fetch('data/news.json');
-        if (!res2.ok) throw new Error('HTTP ' + res2.status);
-        const data = await res2.json();
-        applyData(data);
-      } else {
-        throw new Error('HTTP ' + res.status);
-      }
-    } else {
-      const data = await res.json();
-      applyData(data);
-    }
+    const res = await fetch('/api/news');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    applyData(data);
   } catch (err) {
     showToast('Failed to fetch: ' + err.message);
   } finally {
@@ -615,21 +869,185 @@ async function loadNews() {
 }
 
 function applyData(data) {
-  allArticles = data.articles;
-  renderSources(data);
-  renderArticles();
-  updateStatus(data);
+  state = data;
+  updateBadges();
+  renderModels();
+  renderGithub();
+  renderNews();
+  updateStatus();
 }
 
-function renderSources(data) {
-  const sourceMap = {};
-  for (const a of allArticles) {
-    sourceMap[a.source] = (sourceMap[a.source] || 0) + 1;
+function updateBadges() {
+  document.getElementById('badgeModels').textContent = state.totalModels || state.models.length || 0;
+  document.getElementById('badgeGithub').textContent = state.totalGithub || state.github.length || 0;
+  document.getElementById('badgeNews').textContent = state.totalArticles || state.articles.length || 0;
+  document.getElementById('countText').textContent = (state.totalArticles || 0) + ' articles';
+}
+
+function updateStatus() {
+  const el = document.getElementById('statusText');
+  const elapsed = Math.floor((Date.now() - (state.lastFetched || 0)) / 1000);
+  el.textContent = elapsed < 120 ? 'Live &sdot; ' + elapsed + 's' : 'Live';
+}
+
+// ============================================
+// TAB 1: MODEL RANKINGS
+// ============================================
+function renderModels() {
+  const container = document.getElementById('modelsContent');
+  const models = state.models || [];
+
+  if (models.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p>No model data available</p></div>';
+    return;
   }
+
+  const rows = models.map((m, i) => {
+    const rankClass = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+    const ctxLen = m.context_length
+      ? (m.context_length >= 1000000
+        ? (m.context_length / 1000000).toFixed(1) + 'M'
+        : (m.context_length >= 1000
+          ? (m.context_length / 1000).toFixed(0) + 'K'
+          : m.context_length))
+      : '—';
+    const promptPrice = m.pricing && m.pricing.prompt !== '?' && m.pricing.prompt !== undefined
+      ? '$' + parseFloat(m.pricing.prompt).toFixed(6)
+      : '—';
+    const compPrice = m.pricing && m.pricing.completion !== '?' && m.pricing.completion !== undefined
+      ? '$' + parseFloat(m.pricing.completion).toFixed(6)
+      : '—';
+
+    return '<tr>' +
+      '<td><span class="model-rank ' + rankClass + '">#' + m.rank + '</span></td>' +
+      '<td>' +
+        '<div class="model-name">' + escHtml(m.name) + '</div>' +
+        '<div class="model-id">' + escHtml(m.id) + '</div>' +
+      '</td>' +
+      '<td class="model-desc">' + (m.description ? escHtml(trunc(m.description, 80)) : '') + '</td>' +
+      '<td><span class="model-context"><span class="label">ctx </span>' + ctxLen + '</span></td>' +
+      '<td><span class="model-pricing">' + promptPrice + ' / ' + compPrice + '</span></td>' +
+      '<td><span class="model-provider">' + escHtml(m.top_provider || '—') + '</span></td>' +
+    '</tr>';
+  }).join('');
+
+  container.innerHTML =
+    '<div style="overflow-x:auto">' +
+    '<table class="model-table">' +
+    '<thead><tr>' +
+      '<th>Rank</th>' +
+      '<th>Model</th>' +
+      '<th>Description</th>' +
+      '<th>Context</th>' +
+      '<th>Price (in/out)</th>' +
+      '<th>Provider</th>' +
+    '</tr></thead>' +
+    '<tbody>' + rows + '</tbody>' +
+    '</table>' +
+    '</div>';
+}
+
+// ============================================
+// TAB 2: GITHUB REPOS
+// ============================================
+const LANG_COLORS = {
+  'Python': '#3572A5', 'JavaScript': '#f1e05a', 'TypeScript': '#3178C6',
+  'Java': '#b07219', 'Go': '#00ADD8', 'Rust': '#dea584', 'C++': '#f34b7d',
+  'C': '#555555', 'Ruby': '#701516', 'Swift': '#ffac45', 'Kotlin': '#A97BFF',
+  'Jupyter Notebook': '#DA5B0B', 'HTML': '#e34c26', 'CSS': '#563d7c',
+  'Shell': '#89e051', 'Dockerfile': '#384d54', 'Cuda': '#3A4E3A',
+};
+
+function renderGithub() {
+  const container = document.getElementById('githubContent');
+  const repos = state.github || [];
+
+  if (repos.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p>No GitHub repos data available</p></div>';
+    return;
+  }
+
+  const cards = repos.map((r, i) => {
+    const langColor = LANG_COLORS[r.language] || '#8a7a64';
+    const topics = (r.topics || []).slice(0, 4);
+    const daysAgo = r.updated_at ? daysFromNow(r.updated_at) : '';
+
+    return '<div class="github-card" style="animation-delay:' + (i * 0.03) + 's">' +
+      '<div class="github-card-top">' +
+        '<img class="github-avatar" src="' + escHtml(r.owner_avatar) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' +
+        '<div class="github-repo-name"><a href="' + escHtml(r.url) + '" target="_blank" rel="noopener">' + escHtml(r.name) + '</a></div>' +
+      '</div>' +
+      (r.description ? '<div class="github-desc">' + escHtml(trunc(r.description, 200)) + '</div>' : '') +
+      '<div class="github-meta">' +
+        (r.language ? '<span class="github-meta-item"><span class="github-lang-dot" style="background:' + langColor + '"></span>' + escHtml(r.language) + '</span>' : '') +
+        '<span class="github-meta-item">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+          formatCount(r.stars) +
+        '</span>' +
+        '<span class="github-meta-item">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M8 3H3v5M12 20v-9M3 16l5 5M21 16l-5 5"/></svg>' +
+          formatCount(r.forks) +
+        '</span>' +
+        (daysAgo ? '<span class="github-meta-item">updated ' + daysAgo + '</span>' : '') +
+      '</div>' +
+      (topics.length > 0 ? '<div class="github-topics">' + topics.map(t => '<span class="github-topic">' + escHtml(t) + '</span>').join('') + '</div>' : '') +
+    '</div>';
+  }).join('');
+
+  container.innerHTML = '<div class="github-grid">' + cards + '</div>';
+}
+
+// ============================================
+// TAB 3: AI NEWS (existing logic)
+// ============================================
+function renderNews() {
+  const container = document.getElementById('newsContent');
+  const articles = state.articles || [];
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+
+  let filtered = articles;
+  if (activeLang) filtered = filtered.filter(a => a.lang === activeLang);
+  if (activeSource) filtered = filtered.filter(a => a.source === activeSource);
+  if (search) {
+    filtered = filtered.filter(a =>
+      (a.title && a.title.toLowerCase().includes(search)) ||
+      (a.description && a.description.toLowerCase().includes(search))
+    );
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="margin-top:40px"><p>No articles found</p></div>';
+    return;
+  }
+
+  container.innerHTML = '<div class="articles">' +
+    filtered.map((a, i) => {
+      const date = a.pubDate ? formatDate(a.pubDate) : '';
+      const desc = trunc(a.description, 280);
+      return '<div class="article-item" style="animation-delay:' + (i * 0.03) + 's">' +
+        '<div class="article-title"><a href="' + escHtml(a.link) + '" target="_blank" rel="noopener">' + escHtml(a.title || '(no title)') + '</a></div>' +
+        '<div class="article-meta">' +
+          '<span class="article-source">' + escHtml(a.source) + '</span>' +
+          (a.lang ? '<span class="lang-badge">' + (a.lang === 'zh' ? '中文' : 'EN') + '</span>' : '') +
+          (date ? '<span class="article-date">' + date + '</span>' : '') +
+        '</div>' +
+        (desc ? '<div class="article-desc">' + escHtml(desc) + '</div>' : '') +
+      '</div>';
+    }).join('') +
+  '</div>';
+}
+
+// Render source filters for news tab
+function renderSources() {
+  const articles = state.articles || [];
+  const sourceMap = {};
+  for (const a of articles) sourceMap[a.source] = (sourceMap[a.source] || 0) + 1;
   const sources = Object.entries(sourceMap).sort((a, b) => b[1] - a[1]);
 
   const container = document.getElementById('sourceFilters');
-  container.innerHTML = '<button class="source-pill' + (activeSource === null ? ' active' : '') + '" data-source="" onclick="setSource(\'\')">All<span class="count-badge">' + allArticles.length + '</span></button>';
+  if (!container) return;
+
+  container.innerHTML = '<button class="source-pill' + (activeSource === null ? ' active' : '') + '" data-source="" onclick="setSource(\'\')">All<span class="count-badge">' + articles.length + '</span></button>';
 
   for (const [name, count] of sources) {
     const pill = document.createElement('button');
@@ -644,94 +1062,33 @@ function renderSources(data) {
     container.appendChild(pill);
   }
 
-  // Source status
   const statusEl = document.getElementById('sourceStatus');
-  if (data.errors && data.errors.length > 0) {
-    statusEl.innerHTML = '<span class="ok">\u2713 ' + data.successfulSources + '/' + data.totalSources + '</span> <span class="err">\u2717 ' + data.errors.map(e => e.source).join(', ') + '</span>';
-  } else {
-    statusEl.innerHTML = '<span class="ok">\u2713 ' + data.successfulSources + '/' + data.totalSources + ' sources</span>';
+  if (statusEl) {
+    const errs = state.errors || [];
+    const rssErrs = errs.filter(e => e.source !== 'OpenRouter Rankings' && e.source !== 'GitHub Trending AI');
+    if (rssErrs.length > 0) {
+      statusEl.innerHTML = '<span class="ok">\u2713 ' + (state.totalSources - errs.length) + '/' + state.totalSources + '</span> <span class="err">\u2717 ' + rssErrs.map(e => e.source).join(', ') + '</span>';
+    } else {
+      statusEl.innerHTML = '<span class="ok">\u2713 ' + (state.totalSources - errs.length) + '/' + state.totalSources + ' sources</span>';
+    }
   }
 }
 
 function setSource(name) {
   activeSource = name || null;
-  document.querySelectorAll('.source-pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.source === (name || ''));
-  });
-  renderArticles();
+  document.querySelectorAll('.source-pill').forEach(p => p.classList.toggle('active', p.dataset.source === (name || '')));
+  renderNews();
 }
 
 function setLang(lang) {
   activeLang = lang;
-  document.querySelectorAll('.lang-pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.lang === lang);
-  });
-  renderArticles();
+  document.querySelectorAll('.lang-pill').forEach(p => p.classList.toggle('active', p.dataset.lang === lang));
+  renderNews();
 }
 
-function applyFilters() {
-  renderArticles();
-}
-
-function renderArticles() {
-  const container = document.getElementById('articles');
-  const search = document.getElementById('searchInput').value.toLowerCase().trim();
-
-  let filtered = allArticles;
-  if (activeLang) {
-    filtered = filtered.filter(a => a.lang === activeLang);
-  }
-  if (activeSource) {
-    filtered = filtered.filter(a => a.source === activeSource);
-  }
-  if (search) {
-    filtered = filtered.filter(a =>
-      (a.title && a.title.toLowerCase().includes(search)) ||
-      (a.description && a.description.toLowerCase().includes(search))
-    );
-  }
-
-  document.getElementById('countText').textContent = filtered.length;
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state"><p>No articles found</p></div>';
-    return;
-  }
-
-  container.innerHTML = filtered.map((a, i) => {
-    const date = a.pubDate ? formatDate(a.pubDate) : '';
-    const desc = truncate(a.description, 280);
-    return '<div class="article-item" style="animation-delay:' + (i * 0.03) + 's">' +
-      '<div class="article-title"><a href="' + escapeHtml(a.link) + '" target="_blank" rel="noopener">' + escapeHtml(a.title || '(no title)') + '</a></div>' +
-      '<div class="article-meta">' +
-        '<span class="article-source">' + escapeHtml(a.source) + '</span>' +
-        (a.lang ? '<span class="lang-badge">' + (a.lang === 'zh' ? '中文' : 'EN') + '</span>' : '') +
-        (date ? '<span class="article-date">' + date + '</span>' : '') +
-      '</div>' +
-      (desc ? '<div class="article-desc">' + escapeHtml(desc) + '</div>' : '') +
-    '</div>';
-  }).join('');
-}
-
-function updateStatus(data) {
-  const el = document.getElementById('statusText');
-  if (isStaticMode) {
-    // In static mode, show the generation time
-    const elapsed = Math.floor((Date.now() - (data.generatedAt || 0)) / 1000);
-    const mins = Math.floor(elapsed / 60);
-    if (mins < 60) {
-      el.textContent = 'Updated ' + mins + 'm ago';
-    } else {
-      const hours = Math.floor(mins / 60);
-      el.textContent = 'Updated ' + hours + 'h ago';
-    }
-  } else {
-    // Server mode: show cache age
-    const elapsed = Math.floor((Date.now() - data.lastFetched) / 1000);
-    el.textContent = elapsed < 120 ? 'Live \u00b7 ' + elapsed + 's' : 'Live';
-  }
-}
-
+// ============================================
+// HELPERS
+// ============================================
 function formatDate(dateStr) {
   try {
     const d = new Date(dateStr);
@@ -744,12 +1101,29 @@ function formatDate(dateStr) {
   } catch { return dateStr; }
 }
 
-function truncate(str, max) {
+function daysFromNow(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const days = Math.floor((Date.now() - d) / 86400000);
+    if (days === 0) return 'today';
+    if (days === 1) return '1 day ago';
+    return days + ' days ago';
+  } catch { return ''; }
+}
+
+function formatCount(n) {
+  if (!n) return '0';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
+function trunc(str, max) {
   if (!str || str.length <= max) return str || '';
   return str.slice(0, max).replace(/\s+\S*$/, '') + '\u2026';
 }
 
-function escapeHtml(str) {
+function escHtml(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
@@ -761,27 +1135,20 @@ function showToast(msg) {
   setTimeout(() => el.style.display = 'none', 5000);
 }
 
+// ============================================
+// AUTO REFRESH
+// ============================================
 function startAutoRefresh() {
   if (refreshInterval) clearInterval(refreshInterval);
-  // In static mode, refresh less frequently (5 min) since data only changes hourly
-  const interval = isStaticMode ? 300000 : 60000;
-  refreshInterval = setInterval(loadNews, interval);
+  refreshInterval = setInterval(refreshAll, 60000);
 }
 
-// Auto-detect: if running on GitHub Pages (no /api/news endpoint), use static mode
-(function detectMode() {
-  const hostname = window.location.hostname;
-  // GitHub Pages domains: *.github.io
-  if (hostname.endsWith('github.io') || hostname === 'localhost' && !window.location.port) {
-    isStaticMode = true;
-    console.log('[mode] GitHub Pages static mode');
-  } else {
-    // Try to detect by fetching /api/news — if 404, fall back to static
-    isStaticMode = false;
-  }
-})();
-
-loadNews();
+// ============================================
+// INIT
+// ============================================
+refreshAll().then(() => {
+  renderSources();
+});
 startAutoRefresh();
 </script>
 </body>

@@ -1,6 +1,6 @@
 import { createServer } from 'http';
 import { readFileSync } from 'fs';
-import { join, extname, normalize } from 'path';
+import { join, extname } from 'path';
 import { XMLParser } from 'fast-xml-parser';
 
 // ============================================
@@ -27,6 +27,14 @@ const SOURCES = [
 ];
 
 // ============================================
+// API ENDPOINTS for new data sources
+// ============================================
+const OPENROUTER_API = 'https://openrouter.ai/api/v1/models';
+const GITHUB_SEARCH_API = 'https://api.github.com/search/repositories?q=artificial-intelligence+sort:stars&per_page=25';
+const GITHUB_SEARCH_API_2 = 'https://api.github.com/search/repositories?q=machine-learning+sort:stars&per_page=25';
+const GITHUB_SEARCH_API_3 = 'https://api.github.com/search/repositories?q=LLM+sort:stars&per_page=25';
+
+// ============================================
 // XML PARSER CONFIG
 // ============================================
 const parser = new XMLParser({
@@ -40,11 +48,19 @@ const parser = new XMLParser({
 // ============================================
 // IN-MEMORY CACHE
 // ============================================
-let cache = { articles: [], lastFetched: 0 };
+let cache = {
+  articles: [],
+  models: [],      // OpenRouter model rankings
+  github: [],       // GitHub trending AI repos
+  lastFetched: 0,
+  errors: [],
+  totalSources: 0,
+  successfulSources: 0,
+};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ============================================
-// RSS FETCHING
+// RSS FETCHING (existing)
 // ============================================
 async function fetchSource(source) {
   const response = await fetch(source.url, {
@@ -59,18 +75,15 @@ async function fetchSource(source) {
 
 function extractArticles(sourceName, lang, parsed) {
   const articles = [];
-
   function toStr(v) {
     if (!v) return '';
     if (typeof v === 'object') return v['#text'] || '';
     return String(v);
   }
-
-  // RSS 2.0 format
+  // RSS 2.0
   if (parsed.rss?.channel?.item) {
     const items = Array.isArray(parsed.rss.channel.item)
-      ? parsed.rss.channel.item
-      : [parsed.rss.channel.item];
+      ? parsed.rss.channel.item : [parsed.rss.channel.item];
     for (const item of items) {
       articles.push({
         title: toStr(item.title),
@@ -82,12 +95,10 @@ function extractArticles(sourceName, lang, parsed) {
       });
     }
   }
-
   // Atom format
   if (parsed.feed?.entry) {
     const entries = Array.isArray(parsed.feed.entry)
-      ? parsed.feed.entry
-      : [parsed.feed.entry];
+      ? parsed.feed.entry : [parsed.feed.entry];
     for (const entry of entries) {
       let link = '';
       if (typeof entry.link === 'object') {
@@ -105,16 +116,12 @@ function extractArticles(sourceName, lang, parsed) {
       });
     }
   }
-
   return articles;
 }
 
 function stripHtml(html) {
   if (!html) return '';
-  if (typeof html === 'object') {
-    // fast-xml-parser sometimes returns objects for CDATA/nested content
-    html = html['#text'] || html.content || JSON.stringify(html);
-  }
+  if (typeof html === 'object') html = html['#text'] || html.content || JSON.stringify(html);
   if (typeof html !== 'string') html = String(html);
   return html
     .replace(/<[^>]*>/g, ' ')
@@ -127,43 +134,165 @@ function stripHtml(html) {
     .trim();
 }
 
-async function refreshCache() {
-  console.log('[ai-news] Fetching all sources...');
-  const results = await Promise.allSettled(
-    SOURCES.map(s => fetchSource(s))
-  );
+// ============================================
+// OPENROUTER MODEL RANKINGS
+// ============================================
+async function fetchOpenRouterModels() {
+  const response = await fetch(OPENROUTER_API, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AI-News-Hub/1.0)' },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  const models = data.data || [];
 
-  const allArticles = [];
-  const errors = [];
+  // Sort: newest first by `created` timestamp; those without dates sink to bottom
+  models.sort((a, b) => {
+    const da = a.created || 0;
+    const db = b.created || 0;
+    return db - da;
+  });
 
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    if (r.status === 'fulfilled') {
-      const articles = extractArticles(SOURCES[i].name, r.value.lang, r.value.parsed);
-      allArticles.push(...articles);
-      console.log(`[ai-news] ${SOURCES[i].name}: ${articles.length} articles`);
-    } else {
-      errors.push({ source: SOURCES[i].name, error: r.reason?.message || 'Unknown error' });
-      console.error(`[ai-news] ${SOURCES[i].name}: FAILED - ${r.reason?.message}`);
+  // Extract and normalize the data we need
+  return models.slice(0, 50).map((m, i) => ({
+    rank: i + 1,
+    id: m.id || '',
+    name: m.name || m.id || '',
+    created: m.created || 0,
+    context_length: m.context_length || 0,
+    description: stripHtml(m.description || ''),
+    pricing: m.pricing || { prompt: '?', completion: '?' },
+    architecture: m.architecture || null,
+    top_provider: m.top_provider?.name || m.top_provider?.provider || '',
+  }));
+}
+
+// ============================================
+// GITHUB TRENDING AI REPOS
+// ============================================
+async function fetchGitHubTrending() {
+  // Use multiple simpler queries and merge results (deduped by repo name)
+  const allItems = [];
+  const seen = new Set();
+
+  const urls = [GITHUB_SEARCH_API, GITHUB_SEARCH_API_2, GITHUB_SEARCH_API_3];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'AI-News-Hub/1.0',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const items = data.items || [];
+      for (const repo of items) {
+        if (!seen.has(repo.full_name || repo.name)) {
+          seen.add(repo.full_name || repo.name);
+          allItems.push(repo);
+        }
+      }
+    } catch (err) {
+      // Individual query failure is non-fatal; continue with others
+      console.error(`[github] sub-query failed: ${err.message}`);
     }
   }
 
-  // Sort by date (newest first), articles without dates at the end
+  // Sort by stars descending
+  allItems.sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0));
+
+  return allItems.slice(0, 25).map(repo => ({
+    name: repo.full_name || repo.name || '',
+    url: repo.html_url || '',
+    description: repo.description || '',
+    stars: repo.stargazers_count || 0,
+    forks: repo.forks_count || 0,
+    language: repo.language || '',
+    topics: repo.topics || [],
+    updated_at: repo.updated_at || '',
+    created_at: repo.created_at || '',
+    owner_avatar: repo.owner?.avatar_url || '',
+    owner_login: repo.owner?.login || '',
+  }));
+}
+
+// ============================================
+// CACHE REFRESH (all data sources)
+// ============================================
+async function refreshCache() {
+  console.log('[ai-news] ===== Refreshing all data sources =====');
+
+  // 1) RSS articles (existing)
+  const rssResults = await Promise.allSettled(
+    SOURCES.map(s => fetchSource(s))
+  );
+  const allArticles = [];
+  const allErrors = [];
+  for (let i = 0; i < rssResults.length; i++) {
+    const r = rssResults[i];
+    if (r.status === 'fulfilled') {
+      const articles = extractArticles(SOURCES[i].name, r.value.lang, r.value.parsed);
+      allArticles.push(...articles);
+      console.log(`[rss] ${SOURCES[i].name}: ${articles.length} articles`);
+    } else {
+      allErrors.push({ source: SOURCES[i].name, error: r.reason?.message || 'Unknown error' });
+      console.error(`[rss] ${SOURCES[i].name}: FAILED - ${r.reason?.message}`);
+    }
+  }
   allArticles.sort((a, b) => {
     const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
     const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
     return db - da;
   });
+  console.log(`[rss] Total: ${allArticles.length} articles from ${SOURCES.length - allErrors.filter(e => e.source && rssResults[SOURCES.findIndex(s => s.name === e.source)].status === 'rejected').length}/${SOURCES.length} sources`);
+
+  // 2) OpenRouter models
+  let models = [];
+  try {
+    models = await fetchOpenRouterModels();
+    console.log(`[openrouter] ${models.length} models loaded`);
+  } catch (err) {
+    allErrors.push({ source: 'OpenRouter Rankings', error: err.message });
+    console.error(`[openrouter] FAILED - ${err.message}`);
+  }
+
+  // 3) GitHub trending AI repos
+  let github = [];
+  try {
+    github = await fetchGitHubTrending();
+    console.log(`[github] ${github.length} repos loaded`);
+  } catch (err) {
+    allErrors.push({ source: 'GitHub Trending AI', error: err.message });
+    console.error(`[github] FAILED - ${err.message}`);
+  }
+
+  // Build total/successful counts
+  const totalSources = SOURCES.length + 2; // +2 for OpenRouter + GitHub
+  const failedExtras = allErrors.filter(e =>
+    e.source === 'OpenRouter Rankings' || e.source === 'GitHub Trending AI'
+  ).length;
+  const failedRss = allErrors.length - failedExtras;
+  const successfulSources = totalSources - allErrors.length;
 
   cache = {
     articles: allArticles,
+    models,
+    github,
     lastFetched: Date.now(),
-    errors,
-    totalSources: SOURCES.length,
-    successfulSources: SOURCES.length - errors.length,
+    errors: allErrors,
+    totalSources,
+    successfulSources,
+    totalArticles: allArticles.length,
+    totalModels: models.length,
+    totalGithub: github.length,
   };
 
-  console.log(`[ai-news] Total: ${allArticles.length} articles from ${cache.successfulSources}/${cache.totalSources} sources`);
+  console.log(`[ai-news] ===== Refresh complete =====`);
+  console.log(`  Articles: ${allArticles.length}  |  Models: ${models.length}  |  GitHub repos: ${github.length}`);
+  console.log(`  Sources: ${successfulSources}/${totalSources} OK`);
 }
 
 // ============================================
@@ -188,9 +317,8 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const path = url.pathname;
 
-  // API: /api/news
+  // API: /api/news — returns all three data sections
   if (path === '/api/news') {
-    // Refresh cache if stale
     if (Date.now() - cache.lastFetched > CACHE_TTL) {
       await refreshCache();
     }
@@ -202,10 +330,15 @@ const server = createServer(async (req, res) => {
     });
     res.end(JSON.stringify({
       articles: cache.articles,
+      models: cache.models,
+      github: cache.github,
       lastFetched: cache.lastFetched,
       errors: cache.errors || [],
       totalSources: cache.totalSources,
       successfulSources: cache.successfulSources,
+      totalArticles: cache.totalArticles || cache.articles.length,
+      totalModels: cache.totalModels || cache.models.length,
+      totalGithub: cache.totalGithub || cache.github.length,
     }));
     return;
   }
@@ -216,7 +349,6 @@ const server = createServer(async (req, res) => {
     ? join(publicDir, 'index.html')
     : join(publicDir, path);
 
-  // Prevent directory traversal
   if (!filePath.startsWith(publicDir)) {
     res.writeHead(403);
     res.end('Forbidden');
@@ -234,17 +366,20 @@ const server = createServer(async (req, res) => {
   }
 });
 
-// Initial fetch on startup
+// Start
 refreshCache().then(() => {
   server.listen(PORT, () => {
     console.log(`
-╔══════════════════════════════════════════╗
-║  AI Models News Hub                     ║
-║  http://localhost:${PORT}/                  ║
-║                                          ║
-║  ${SOURCES.length} RSS sources               ║
-║  Auto-refresh every ${CACHE_TTL / 60000} min              ║
-╚══════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════╗
+║  AI Intelligence Hub                                    ║
+║  http://localhost:${PORT}/                                  ║
+║                                                          ║
+║  ├─ AI News     (${SOURCES.length} RSS sources)                    ║
+║  ├─ OpenRouter  (model rankings)                        ║
+║  └─ GitHub      (trending AI repos)                     ║
+║                                                          ║
+║  Auto-refresh every ${CACHE_TTL / 60000} min                  ║
+╚══════════════════════════════════════════════════════════╝
     `);
   });
 });
