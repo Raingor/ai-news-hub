@@ -847,6 +847,23 @@ function switchTab(name) {
 }
 
 // ============================================
+// MODE DETECTION
+// ============================================
+let isStaticMode = false;
+
+function detectMode() {
+  const hostname = window.location.hostname;
+  // GitHub Pages domains: *.github.io, or local file:// protocol
+  if (hostname.endsWith('github.io') || hostname === 'localhost' && !window.location.port || window.location.protocol === 'file:') {
+    isStaticMode = true;
+    console.log('[mode] Static mode (GitHub Pages / local file)');
+  } else {
+    isStaticMode = false;
+    console.log('[mode] Server mode (/api/news)');
+  }
+}
+
+// ============================================
 // DATA FETCHING
 // ============================================
 async function refreshAll() {
@@ -854,10 +871,19 @@ async function refreshAll() {
   btn.disabled = true;
   btn.classList.add('spinning');
 
-  // Check which tab is active for scroll preservation
   try {
-    const res = await fetch('/api/news');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    // Try primary data source
+    const dataUrl = isStaticMode ? 'data/news.json' : '/api/news';
+    let res = await fetch(dataUrl);
+    if (!res.ok) {
+      // Fallback: if server mode fails, try static
+      if (!isStaticMode) {
+        console.log('[fallback] Trying static data/news.json...');
+        isStaticMode = true;
+        res = await fetch('data/news.json');
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    }
     const data = await res.json();
     applyData(data);
   } catch (err) {
@@ -1140,12 +1166,16 @@ function showToast(msg) {
 // ============================================
 function startAutoRefresh() {
   if (refreshInterval) clearInterval(refreshInterval);
-  refreshInterval = setInterval(refreshAll, 60000);
+  // Static mode (GitHub Pages): refresh every 5min (data updates hourly)
+  // Server mode: refresh every 60s (data updates every 5min)
+  const interval = isStaticMode ? 300000 : 60000;
+  refreshInterval = setInterval(refreshAll, interval);
 }
 
 // ============================================
 // INIT
 // ============================================
+detectMode();
 refreshAll().then(() => {
   renderSources();
 });
