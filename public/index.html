@@ -837,6 +837,8 @@ let state = {
 let activeSource = null;
 let activeLang = '';
 let refreshInterval;
+let newsShown = 30;           // pagination: articles currently shown
+const NEWS_PAGE_SIZE = 30;    // load more batch size
 
 // ============================================
 // TAB SWITCHING
@@ -853,8 +855,10 @@ let isStaticMode = false;
 
 function detectMode() {
   const hostname = window.location.hostname;
-  // GitHub Pages domains: *.github.io, or local file:// protocol
-  if (hostname.endsWith('github.io') || hostname === 'localhost' && !window.location.port || window.location.protocol === 'file:') {
+  const port = window.location.port;
+  const protocol = window.location.protocol;
+  // Static mode: GitHub Pages, file:// protocol, or no-port localhost
+  if (hostname.endsWith('.github.io') || protocol === 'file:' || (hostname === 'localhost' && !port)) {
     isStaticMode = true;
     console.log('[mode] Static mode (GitHub Pages / local file)');
   } else {
@@ -896,9 +900,11 @@ async function refreshAll() {
 
 function applyData(data) {
   state = data;
+  newsShown = NEWS_PAGE_SIZE; // reset pagination on new data
   updateBadges();
   renderModels();
   renderGithub();
+  renderSources();  // re-render source filters on every refresh
   renderNews();
   updateStatus();
 }
@@ -1046,8 +1052,12 @@ function renderNews() {
     return;
   }
 
+  // Pagination: only show newsShown articles
+  const visible = filtered.slice(0, newsShown);
+  const hasMore = filtered.length > newsShown;
+
   container.innerHTML = '<div class="articles">' +
-    filtered.map((a, i) => {
+    visible.map((a, i) => {
       const date = a.pubDate ? formatDate(a.pubDate) : '';
       const desc = trunc(a.description, 280);
       return '<div class="article-item" style="animation-delay:' + (i * 0.03) + 's">' +
@@ -1060,7 +1070,19 @@ function renderNews() {
         (desc ? '<div class="article-desc">' + escHtml(desc) + '</div>' : '') +
       '</div>';
     }).join('') +
-  '</div>';
+  '</div>' +
+  (hasMore
+    ? '<div style="text-align:center;padding:24px 0">' +
+        '<button class="refresh-btn" onclick="loadMoreNews()" style="padding:10px 28px;font-size:13px">' +
+          'Load more (' + (filtered.length - newsShown) + ' remaining)' +
+        '</button>' +
+      '</div>'
+    : '');
+}
+
+function loadMoreNews() {
+  newsShown += NEWS_PAGE_SIZE;
+  renderNews();
 }
 
 // Render source filters for news tab
@@ -1176,9 +1198,7 @@ function startAutoRefresh() {
 // INIT
 // ============================================
 detectMode();
-refreshAll().then(() => {
-  renderSources();
-});
+refreshAll();
 startAutoRefresh();
 </script>
 </body>

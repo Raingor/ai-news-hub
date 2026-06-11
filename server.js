@@ -1,298 +1,36 @@
 import { createServer } from 'http';
-import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { join, extname } from 'path';
-import { XMLParser } from 'fast-xml-parser';
+import { SOURCES, CACHE_TTL } from './lib/sources.js';
+import { refreshAllData } from './lib/fetchers.js';
 
 // ============================================
-// RSS SOURCES
-// ============================================
-const SOURCES = [
-  // English sources
-  { name: 'ArXiv ML (cs.LG)', url: 'https://export.arxiv.org/rss/cs.LG', lang: 'en' },
-  { name: 'ArXiv NLP (cs.CL)', url: 'https://export.arxiv.org/rss/cs.CL', lang: 'en' },
-  { name: 'ArXiv Vision (cs.CV)', url: 'https://export.arxiv.org/rss/cs.CV', lang: 'en' },
-  { name: 'ArXiv AI (cs.AI)', url: 'https://export.arxiv.org/rss/cs.AI', lang: 'en' },
-  { name: 'Hugging Face Blog', url: 'https://huggingface.co/blog/feed.xml', lang: 'en' },
-  { name: 'OpenAI Blog', url: 'https://openai.com/blog/rss.xml', lang: 'en' },
-  { name: 'Reddit r/MachineLearning', url: 'https://www.reddit.com/r/MachineLearning/.rss', lang: 'en' },
-  { name: 'Reddit r/LocalLLaMA', url: 'https://www.reddit.com/r/LocalLLaMA/.rss', lang: 'en' },
-  { name: 'AI Model News', url: 'https://news.google.com/rss/search?q=(OpenAI+OR+Anthropic+OR+DeepSeek+OR+Qwen+OR+"AI+model"+OR+"large+language+model"+OR+LLM+OR+GPT+OR+Claude)+when:2d&hl=en-US&gl=US&ceid=US:en', lang: 'en' },
-  { name: 'VentureBeat AI', url: 'https://venturebeat.com/category/ai/feed/', lang: 'en' },
-  // Chinese sources
-  { name: 'zh: 雷峰网 AI', url: 'https://www.leiphone.com/feed', lang: 'zh' },
-  { name: 'zh: 钛媒体', url: 'https://www.tmtpost.com/rss', lang: 'zh' },
-  { name: 'zh: 动点科技', url: 'https://cn.technode.com/feed/', lang: 'zh' },
-  { name: 'zh: 中文大模型动态', url: 'https://news.google.com/rss/search?q=(DeepSeek+OR+%E9%80%9A%E4%B9%89%E5%8D%83%E9%97%AE+OR+%E6%96%87%E5%BF%83%E4%B8%80%E8%A8%80+OR+%E6%99%BA%E8%B0%B1+OR+%E6%9C%88%E4%B9%8B%E6%9A%97%E9%9D%A2+OR+Kimi+OR+Qwen+OR+ChatGLM+OR+Baichuan+OR+%E9%98%B6%E8%B7%83%E6%98%9F%E8%BE%B0+OR+MiniMax+OR+%E9%9B%B6%E4%B8%80%E4%B8%87%E7%89%A9+OR+%E7%99%BE%E5%B7%9D+OR+%E6%98%9F%E7%81%AB+%E5%A4%A7%E6%A8%A1%E5%9E%8B)+when:2d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans', lang: 'zh' },
-  { name: 'zh: AI开源模型动态', url: 'https://news.google.com/rss/search?q=(%E5%BC%80%E6%BA%90+%E5%A4%A7%E6%A8%A1%E5%9E%8B+OR+%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0+%E6%A1%86%E6%9E%B6+OR+%E8%AE%AD%E7%BB%83+AI+%E6%A8%A1%E5%9E%8B+OR+%E5%8F%91%E5%B8%83+LLM+OR+OpenAI+%E4%B8%AD%E6%96%87+OR+AI+%E7%AE%97%E6%B3%95+%E7%AA%81%E7%A0%B4)+when:1w&hl=zh-CN&gl=CN&ceid=CN:zh-Hans', lang: 'zh' },
-];
-
-// ============================================
-// API ENDPOINTS for new data sources
-// ============================================
-const OPENROUTER_API = 'https://openrouter.ai/api/v1/models';
-const GITHUB_SEARCH_API = 'https://api.github.com/search/repositories?q=artificial-intelligence+sort:stars&per_page=25';
-const GITHUB_SEARCH_API_2 = 'https://api.github.com/search/repositories?q=machine-learning+sort:stars&per_page=25';
-const GITHUB_SEARCH_API_3 = 'https://api.github.com/search/repositories?q=LLM+sort:stars&per_page=25';
-
-// ============================================
-// XML PARSER CONFIG
-// ============================================
-const parser = new XMLParser({
-  ignoreAttributes: false,
-  attributeNamePrefix: '@_',
-  textNodeName: '#text',
-  parseTagValue: true,
-  trimValues: true,
-});
-
-// ============================================
-// IN-MEMORY CACHE
+// IN-MEMORY CACHE with refresh lock
 // ============================================
 let cache = {
   articles: [],
-  models: [],      // OpenRouter model rankings
-  github: [],       // GitHub trending AI repos
+  models: [],
+  github: [],
   lastFetched: 0,
   errors: [],
   totalSources: 0,
   successfulSources: 0,
 };
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// ============================================
-// RSS FETCHING (existing)
-// ============================================
-async function fetchSource(source) {
-  const response = await fetch(source.url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AI-News-Hub/1.0)' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const xml = await response.text();
-  const parsed = parser.parse(xml);
-  return { source: source.name, lang: source.lang, parsed };
-}
+// Prevent concurrent refresh calls (race condition fix)
+let refreshPromise = null;
 
-function extractArticles(sourceName, lang, parsed) {
-  const articles = [];
-  function toStr(v) {
-    if (!v) return '';
-    if (typeof v === 'object') return v['#text'] || '';
-    return String(v);
-  }
-  // RSS 2.0
-  if (parsed.rss?.channel?.item) {
-    const items = Array.isArray(parsed.rss.channel.item)
-      ? parsed.rss.channel.item : [parsed.rss.channel.item];
-    for (const item of items) {
-      articles.push({
-        title: toStr(item.title),
-        link: toStr(item.link),
-        description: stripHtml(item.description || ''),
-        pubDate: toStr(item.pubDate || item['dc:date'] || ''),
-        source: sourceName,
-        lang,
-      });
-    }
-  }
-  // Atom format
-  if (parsed.feed?.entry) {
-    const entries = Array.isArray(parsed.feed.entry)
-      ? parsed.feed.entry : [parsed.feed.entry];
-    for (const entry of entries) {
-      let link = '';
-      if (typeof entry.link === 'object') {
-        link = entry.link['@_href']
-          || (Array.isArray(entry.link) ? entry.link.find(l => l['@_rel'] === 'alternate')?.['@_href'] : '')
-          || '';
-      }
-      articles.push({
-        title: toStr(entry.title),
-        link,
-        description: stripHtml(entry.summary || entry.content || ''),
-        pubDate: toStr(entry.published || entry.updated || ''),
-        source: sourceName,
-        lang,
-      });
-    }
-  }
-  return articles;
-}
-
-function stripHtml(html) {
-  if (!html) return '';
-  if (typeof html === 'object') html = html['#text'] || html.content || JSON.stringify(html);
-  if (typeof html !== 'string') html = String(html);
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-// ============================================
-// OPENROUTER MODEL RANKINGS
-// ============================================
-async function fetchOpenRouterModels() {
-  const response = await fetch(OPENROUTER_API, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AI-News-Hub/1.0)' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const data = await response.json();
-  const models = data.data || [];
-
-  // Sort: newest first by `created` timestamp; those without dates sink to bottom
-  models.sort((a, b) => {
-    const da = a.created || 0;
-    const db = b.created || 0;
-    return db - da;
-  });
-
-  // Extract and normalize the data we need
-  return models.slice(0, 50).map((m, i) => ({
-    rank: i + 1,
-    id: m.id || '',
-    name: m.name || m.id || '',
-    created: m.created || 0,
-    context_length: m.context_length || 0,
-    description: stripHtml(m.description || ''),
-    pricing: m.pricing || { prompt: '?', completion: '?' },
-    architecture: m.architecture || null,
-    top_provider: m.top_provider?.name || m.top_provider?.provider || '',
-  }));
-}
-
-// ============================================
-// GITHUB TRENDING AI REPOS
-// ============================================
-async function fetchGitHubTrending() {
-  // Use multiple simpler queries and merge results (deduped by repo name)
-  const allItems = [];
-  const seen = new Set();
-
-  const urls = [GITHUB_SEARCH_API, GITHUB_SEARCH_API_2, GITHUB_SEARCH_API_3];
-
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'AI-News-Hub/1.0',
-          'Accept': 'application/vnd.github.v3+json',
-        },
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      const items = data.items || [];
-      for (const repo of items) {
-        if (!seen.has(repo.full_name || repo.name)) {
-          seen.add(repo.full_name || repo.name);
-          allItems.push(repo);
-        }
-      }
-    } catch (err) {
-      // Individual query failure is non-fatal; continue with others
-      console.error(`[github] sub-query failed: ${err.message}`);
-    }
-  }
-
-  // Sort by stars descending
-  allItems.sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0));
-
-  return allItems.slice(0, 25).map(repo => ({
-    name: repo.full_name || repo.name || '',
-    url: repo.html_url || '',
-    description: repo.description || '',
-    stars: repo.stargazers_count || 0,
-    forks: repo.forks_count || 0,
-    language: repo.language || '',
-    topics: repo.topics || [],
-    updated_at: repo.updated_at || '',
-    created_at: repo.created_at || '',
-    owner_avatar: repo.owner?.avatar_url || '',
-    owner_login: repo.owner?.login || '',
-  }));
-}
-
-// ============================================
-// CACHE REFRESH (all data sources)
-// ============================================
 async function refreshCache() {
-  console.log('[ai-news] ===== Refreshing all data sources =====');
-
-  // 1) RSS articles (existing)
-  const rssResults = await Promise.allSettled(
-    SOURCES.map(s => fetchSource(s))
-  );
-  const allArticles = [];
-  const allErrors = [];
-  for (let i = 0; i < rssResults.length; i++) {
-    const r = rssResults[i];
-    if (r.status === 'fulfilled') {
-      const articles = extractArticles(SOURCES[i].name, r.value.lang, r.value.parsed);
-      allArticles.push(...articles);
-      console.log(`[rss] ${SOURCES[i].name}: ${articles.length} articles`);
-    } else {
-      allErrors.push({ source: SOURCES[i].name, error: r.reason?.message || 'Unknown error' });
-      console.error(`[rss] ${SOURCES[i].name}: FAILED - ${r.reason?.message}`);
-    }
-  }
-  allArticles.sort((a, b) => {
-    const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-    const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
-    return db - da;
-  });
-  console.log(`[rss] Total: ${allArticles.length} articles from ${SOURCES.length - allErrors.filter(e => e.source && rssResults[SOURCES.findIndex(s => s.name === e.source)].status === 'rejected').length}/${SOURCES.length} sources`);
-
-  // 2) OpenRouter models
-  let models = [];
-  try {
-    models = await fetchOpenRouterModels();
-    console.log(`[openrouter] ${models.length} models loaded`);
-  } catch (err) {
-    allErrors.push({ source: 'OpenRouter Rankings', error: err.message });
-    console.error(`[openrouter] FAILED - ${err.message}`);
-  }
-
-  // 3) GitHub trending AI repos
-  let github = [];
-  try {
-    github = await fetchGitHubTrending();
-    console.log(`[github] ${github.length} repos loaded`);
-  } catch (err) {
-    allErrors.push({ source: 'GitHub Trending AI', error: err.message });
-    console.error(`[github] FAILED - ${err.message}`);
-  }
-
-  // Build total/successful counts
-  const totalSources = SOURCES.length + 2; // +2 for OpenRouter + GitHub
-  const failedExtras = allErrors.filter(e =>
-    e.source === 'OpenRouter Rankings' || e.source === 'GitHub Trending AI'
-  ).length;
-  const failedRss = allErrors.length - failedExtras;
-  const successfulSources = totalSources - allErrors.length;
-
-  cache = {
-    articles: allArticles,
-    models,
-    github,
-    lastFetched: Date.now(),
-    errors: allErrors,
-    totalSources,
-    successfulSources,
-    totalArticles: allArticles.length,
-    totalModels: models.length,
-    totalGithub: github.length,
-  };
-
-  console.log(`[ai-news] ===== Refresh complete =====`);
-  console.log(`  Articles: ${allArticles.length}  |  Models: ${models.length}  |  GitHub repos: ${github.length}`);
-  console.log(`  Sources: ${successfulSources}/${totalSources} OK`);
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = refreshAllData()
+    .then(data => {
+      cache = data;
+      return data;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+  return refreshPromise;
 }
 
 // ============================================
@@ -309,60 +47,71 @@ const MIME = {
 };
 
 // ============================================
+// SECURITY HEADERS
+// ============================================
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+};
+
+// ============================================
 // HTTP SERVER
 // ============================================
 const PORT = parseInt(process.env.PORT || '8088', 10);
+const PUBLIC_DIR = join(process.cwd(), 'public');
 
 const server = createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
-  const path = url.pathname;
+  try {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const path = url.pathname;
 
-  // API: /api/news — returns all three data sections
-  if (path === '/api/news') {
-    if (Date.now() - cache.lastFetched > CACHE_TTL) {
-      await refreshCache();
+    // API: /api/news — returns all data sections
+    if (path === '/api/news') {
+      if (Date.now() - cache.lastFetched > CACHE_TTL) {
+        await refreshCache();
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache',
+        ...SECURITY_HEADERS,
+      });
+      res.end(JSON.stringify(cache));
+      return;
     }
 
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-cache',
-    });
-    res.end(JSON.stringify({
-      articles: cache.articles,
-      models: cache.models,
-      github: cache.github,
-      lastFetched: cache.lastFetched,
-      errors: cache.errors || [],
-      totalSources: cache.totalSources,
-      successfulSources: cache.successfulSources,
-      totalArticles: cache.totalArticles || cache.articles.length,
-      totalModels: cache.totalModels || cache.models.length,
-      totalGithub: cache.totalGithub || cache.github.length,
-    }));
-    return;
-  }
+    // Static files (async read)
+    let filePath = path === '/'
+      ? join(PUBLIC_DIR, 'index.html')
+      : join(PUBLIC_DIR, path);
 
-  // Static files
-  const publicDir = join(process.cwd(), 'public');
-  let filePath = path === '/'
-    ? join(publicDir, 'index.html')
-    : join(publicDir, path);
+    // Path traversal protection
+    if (!filePath.startsWith(PUBLIC_DIR)) {
+      res.writeHead(403, SECURITY_HEADERS);
+      res.end('Forbidden');
+      return;
+    }
 
-  if (!filePath.startsWith(publicDir)) {
-    res.writeHead(403);
-    res.end('Forbidden');
-    return;
-  }
-
-  try {
-    const data = readFileSync(filePath);
-    const ext = extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-    res.end(data);
-  } catch {
-    res.writeHead(404);
-    res.end('Not Found');
+    try {
+      const data = await readFile(filePath);
+      const ext = extname(filePath);
+      res.writeHead(200, {
+        'Content-Type': MIME[ext] || 'application/octet-stream',
+        ...SECURITY_HEADERS,
+      });
+      res.end(data);
+    } catch {
+      res.writeHead(404, SECURITY_HEADERS);
+      res.end('Not Found');
+    }
+  } catch (err) {
+    console.error('[server] Unhandled error:', err);
+    if (!res.headersSent) {
+      res.writeHead(500, SECURITY_HEADERS);
+    }
+    res.end('Internal Server Error');
   }
 });
 
