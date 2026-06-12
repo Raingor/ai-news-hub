@@ -1,5 +1,7 @@
 # AI Models News Hub
 
+> **Live site:** [raingor.github.io/ai-news-hub](https://raingor.github.io/ai-news-hub)
+
 A bilingual news aggregator that collects the latest AI research, model releases, and industry news from 15 global RSS sources.
 
 ## Features
